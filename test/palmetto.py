@@ -23,8 +23,6 @@ class skippedPalmettoTestMethods(unittest.TestCase):
         j.submit()
         print(j.getStatus())
         p.runJob(j.runHash)
-
-class palmettoTestMethods(unittest.TestCase):
     def test_palmettoSubmit(self):
         p = pypalmetto.Palmetto(simPBS=True)
         p.printStatus()
@@ -32,6 +30,12 @@ class palmettoTestMethods(unittest.TestCase):
             print("Hello World")
         j = p.createJob(a)
         j.submit()
+
+class palmettoTestMethods(unittest.TestCase):
+    def test_palmettoQStat(self):
+        p = pypalmetto.Palmetto()
+        s = p.getJobStatusFromHash('p+mlAGtSjm//sxFW1N2gHQ==')
+        print(pypalmetto.job.JobStatus.toStr(s))
 
 
 

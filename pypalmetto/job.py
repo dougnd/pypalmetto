@@ -14,6 +14,7 @@ class JobStatus:
 class Job(object):
     def __init__(self, fRun, palmetto, params, name):
         self.runPickled = base64.b64encode(cloudpickle.dumps(fRun))
+        self.params = params
         self.paramsPickled = base64.b64encode(pickle.dumps(params))
         self.runHash = base64.b64encode(hashlib.md5(
             self.runPickled + self.paramsPickled).digest())
@@ -30,16 +31,18 @@ class Job(object):
         return self.runPickled
     def getParamsPickled(self):
         return self.paramsPickled
+    def getParams(self):
+        return self.params
 
     def getStatus(self):
         prevJob = self.palmetto.jobs.find_one(runHash=self.runHash)
         if prevJob == None:
             return JobStatus.NotSubmitted
         s = prevJob['status']
-        if s == JobStatus.Completed or s == JobStatus.Error:
+        if s != JobStatus.Running and s != JobStatus.Queued:
             return s
 
-        prevJob['status'] = self.palmetto.getJobStatus(prevJob['pbsId'])
+        prevJob['status'] = self.palmetto.getJobQstatStatus(prevJob['pbsId'])
         self.palmetto.jobs.update(prevJob, ['id'])
         return prevJob['status']
 
