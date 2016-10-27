@@ -6,6 +6,7 @@ import sys
 import pickle
 from job import Job, JobStatus
 import base64
+import sh
 
 
 """
@@ -14,8 +15,9 @@ DB format:
     time: run time stamp
     status: 
     pbsId: PBS job id
-    runHash: hash of the run function
+    runHash: hash of the run function and params
     runFunc: pickled run function
+    params: pickled params 
     retVal: pickled return value
 """
 
@@ -33,11 +35,26 @@ class Palmetto(object):
         self.jobs = db['jobs']
 
         self.simPBS = simPBS
+
+    def _dbJobToStr(self, j):
+        def timeToStr(t):
+            return time.strftime("%m/%d/%Y %H:%M:%S", time.localtime(t))
+        def pickleToStr(p):
+            if p == '':
+                return p
+            return str(pickle.loads(base64.b64decode(p)))
+
+        return "{0} {1} {2} {3} {4} funLen: {5} | {6} -> {7}".format(
+                j['runHash'], j['name'], timeToStr(j['time']), 
+                JobStatus.toStr(j['status']), j['pbsId'],
+                len(j['runFunc']),
+                pickleToStr(j['params']),
+                pickleToStr(j['retVal']))
             
     def printStatus(self):
         print("There are {0} jobs listed in the db".format(len(self.jobs)))
         for j in self.jobs:
-            print j
+            print self._dbJobToStr(j)
 
     def getJobStatus(self, pbsId):
         if self.simPBS:
@@ -50,8 +67,8 @@ class Palmetto(object):
                 j['status'] = self.getJobStatus(j['pbsId'])
                 self.jobs.update(j, ['id'])
 
-    def createJob(self, fun, name='pypalmetto'):
-        return Job(fun, self, name)
+    def createJob(self, fun, params=dict(), name='pypalmetto'):
+        return Job(fun, self, params, name)
 
     def submitJob(self,j):
         runHash = j.getHash()
@@ -60,6 +77,7 @@ class Palmetto(object):
         dbJob = prevJob if prevJob != None else dict(
                 runHash=runHash,
                 name=j.getName(),
+                params=j.getParamsPickled(),
                 runFunc=j.getRunPickled())
         dbJob.update(
                 retVal='',
@@ -73,7 +91,6 @@ class Palmetto(object):
             self.jobs.update(dbJob, ['id'])
 
 
-
             
     def runJob(self, runHash):
         status = JobStatus.Completed
@@ -84,8 +101,11 @@ class Palmetto(object):
         print("Running job with hash: ", runHash)
         try:
             runPickeled = base64.b64decode(job['runFunc'])
+            paramsPickeled = base64.b64decode(job['params'])
             runFunc = cloudpickle.loads(runPickeled)
-            job['retVal'] = pickle.dumps(runFunc())
+            params = pickle.loads(paramsPickeled)
+            retPickled = pickle.dumps(runFunc(**params))
+            job['retVal'] = base64.b64encode(retPickled)
         except:
             print("Unexpected error when running command:", sys.exc_info()[0])
             status = JobStatus.Error
