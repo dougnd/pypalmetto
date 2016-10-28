@@ -71,9 +71,9 @@ class Palmetto(object):
         return self.getJobQstatStatus(j['pbsId'])
 
     def getJobQstatStatus(self, pbsId):
-        print("status for {0}".format(pbsId))
+        #print("status for {0}".format(pbsId))
         qstatOut = str(sh.qstat(x=pbsId))
-        print("out: {0}".format(qstatOut))
+        #print("out: {0}".format(qstatOut))
         m = re.search('{0}\s+.+\d\s+([QRF])\s+'.format(pbsId), qstatOut)
         if m:
             if m.group(1) == 'R':
@@ -130,8 +130,8 @@ class Palmetto(object):
         params = j.params
 
         qsubL = 'select=1:ncpus=1:mem=1gb,walltime=30:00'
-        if 'l' in j.params:
-            qsubL = j.params['l']
+        if 'qsubL' in j.params:
+            qsubL = j.params['qsubL']
 
 
         jobStr = """#!/bin/bash
@@ -169,8 +169,12 @@ python -m pypalmetto run '{4}'
             retPickled = pickle.dumps(runFunc(**params))
             job['retVal'] = base64.b64encode(retPickled)
         except:
-            print("Unexpected error when running command:", sys.exc_info()[0])
+            print("Unexpected error when running command:", str(sys.exc_info()[0]))
+            print(str(sys.exc_info()[0]))
             status = JobStatus.Error
+            job['status'] = status
+            self.jobs.update(job, ['id'])
+            raise
 
         job['status'] = status
         self.jobs.update(job, ['id'])

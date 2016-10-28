@@ -49,7 +49,7 @@ class Job(object):
 
     def submit(self, force=False):
         s = self.getStatus()
-        print("Status: {0}".format(JobStatus.toStr(s)))
+        #print("Status: {0}".format(JobStatus.toStr(s)))
         if s != JobStatus.NotSubmitted and s != JobStatus.Error:
             if not force:
                 print("Skipping job")
