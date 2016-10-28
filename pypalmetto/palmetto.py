@@ -162,10 +162,10 @@ python -m pypalmetto run '{4}'
             return
         print("Running job with hash: ", runHash)
         try:
-            runPickeled = base64.b64decode(job['runFunc'])
-            paramsPickeled = base64.b64decode(job['params'])
-            runFunc = cloudpickle.loads(runPickeled)
-            params = pickle.loads(paramsPickeled)
+            runPickled = base64.b64decode(job['runFunc'])
+            paramsPickled = base64.b64decode(job['params'])
+            runFunc = cloudpickle.loads(runPickled)
+            params = pickle.loads(paramsPickled)
             retPickled = pickle.dumps(runFunc(**params))
             job['retVal'] = base64.b64encode(retPickled)
         except:
