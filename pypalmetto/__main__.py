@@ -1,4 +1,4 @@
-from palmetto import Palmetto
+from palmetto import Palmetto, JobStatus
 import argparse
 
 
@@ -8,7 +8,25 @@ def run(args):
 
 def status(args):
     p = Palmetto()
-    p.printStatus()
+    print("Updating status of running jobs...")
+    p.updateDBJobStatuses()
+    print("There are {0} jobs listed in the db".format(len(p.jobs)))
+
+    rJobs = (p.jobs.count(status=JobStatus.Running))
+    if rJobs > 0:
+        print("There are {0} jobs running".format(rJobs))
+
+    qJobs = (p.jobs.count(status=JobStatus.Queued))
+    if qJobs > 0:
+        print("There are {0} jobs queued".format(qJobs))
+
+    cJobs = (p.jobs.count(status=JobStatus.Completed))
+    if cJobs > 0:
+        print("There are {0} jobs completed".format(cJobs))
+
+    eJobs = (p.jobs.count(status=JobStatus.Error))
+    if eJobs > 0:
+        print("There are {0} jobs with error".format(eJobs))
 
 def clear(args):
     p = Palmetto()
