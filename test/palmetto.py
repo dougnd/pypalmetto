@@ -1,5 +1,6 @@
 import unittest
 import pypalmetto
+import os
 
 @unittest.skip("skipped")
 class skippedPalmettoTestMethods(unittest.TestCase):
@@ -31,6 +32,27 @@ class skippedPalmettoTestMethods(unittest.TestCase):
         j = p.createJob(a)
         j.submit()
 
+class palmettoTestSubmitt(unittest.TestCase):
+    def test_palmettoQStat(self):
+        p = pypalmetto.Palmetto()
+        jobs = p.getJobsWithName('py_test')
+        if len(jobs) == 0:
+            print 'no jobs!'
+            def blah():
+                os.system('sleep 30')
+                print "hello world"
+            j = p.createJob(blah, {}, 'py_test')
+            print j
+            print 'submitting...'
+            j.submit()
+            print j
+
+        else:
+            for j in jobs:
+                print j
+
+
+@unittest.skip("skipped")
 class palmettoTestMethods(unittest.TestCase):
     def test_palmettoQStat(self):
         p = pypalmetto.Palmetto()

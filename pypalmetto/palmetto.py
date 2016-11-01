@@ -20,6 +20,7 @@ DB format:
     runFunc: pickled run function
     params: pickled params 
     retVal: pickled return value
+    qsubParams: pickled qsubParams
 """
 
 
@@ -66,13 +67,19 @@ class Palmetto(object):
         for j in self.jobs:
             print self._dbJobToStr(j)
 
+    def getJobsWithName(self, name):
+        jobs = self.jobs.find(name=name)
+        jobs = [Job(j, self) for j in jobs]
+        return jobs
+
     def getJobStatusFromHash(self, hash):
         j = self.jobs.find_one(runHash=hash)
         return self.getJobQstatStatus(j['pbsId'])
 
-    def getJobQstatStatus(self, pbsId):
+    def getJobQstatStatus(self, pbsId, qstatOut=None):
         #print("status for {0}".format(pbsId))
-        qstatOut = str(sh.qstat(x=pbsId))
+        if qstatOut == None:
+            qstatOut = str(sh.qstat(x=pbsId))
         #print("out: {0}".format(qstatOut))
         m = re.search('{0}\s+.+\d\s+([QRF])\s+'.format(pbsId), qstatOut)
         if m:
@@ -80,25 +87,30 @@ class Palmetto(object):
                 return JobStatus.Running
             elif m.group(1) == 'Q':
                 return JobStatus.Queued
-            elif m.group(1) == 'E':
+            elif m.group(1) == 'F':
                 return JobStatus.Error
         return JobStatus.Error
 
     def updateDBJobStatuses(self):
+        user = os.environ['USER']
+        qstatOut = str(sh.qstat(u=user))
         for j in self.jobs:
             if j['status'] != JobStatus.Error and j['status'] != JobStatus.Completed:
-                j['status'] = self.getJobQstatStatus(j['pbsId'])
+                j['status'] = self.getJobQstatStatus(j['pbsId'], qstatOut)
                 self.jobs.update(j, ['id'])
 
     def clearDB(self):
         self.jobs.delete()
 
-    def createJob(self, fun, params=dict(), name='pypalmetto'):
-        return Job(fun, self, params, name)
+    def createJob(self, fun, params=dict(), name='pypalmetto', qsubParams=None):
+        if qsubParams == None:
+            qsubParams = dict(l='select=1:ncpus=1:mem=1gb,walltime=30:00')
+        j = dict(runFuncRaw=fun, paramsRaw=params, name=name, qsubParamsRaw=qsubParams)
+        return Job(j, self)
 
 
     def getJobFileBase(self, j):
-        h = j.getHash()
+        h = j.runHash
         h = h.replace('/', '_').replace('=','-')
         return self.cacheFolder + '/results/' + h
         
@@ -109,43 +121,39 @@ class Palmetto(object):
         return self.getJobFileBase(j)+'.err'
 
     def submitJob(self,j):
-        runHash = j.getHash()
+        runHash = j.runHash
         prevJob = self.jobs.find_one(runHash=runHash)
 
         dbJob = prevJob if prevJob != None else dict(
                 runHash=runHash,
-                name=j.getName(),
-                params=j.getParamsPickled(),
-                runFunc=j.getRunPickled())
+                name=j.name,
+                params=j.params,
+                runFunc=j.runFunc)
         dbJob.update(
                 retVal='',
                 pbsId='',
                 time=time.time(),
+                qsubParams=j.qsubParams,
                 status=JobStatus.NotSubmitted)
 
         if prevJob == None:
             self.jobs.insert(dbJob)
         else:
             self.jobs.update(dbJob, ['id'])
-        params = j.params
-
-        qsubL = 'select=1:ncpus=1:mem=1gb,walltime=30:00'
-        if 'qsubL' in j.params:
-            qsubL = j.params['qsubL']
-
 
         jobStr = """#!/bin/bash
 #PBS -N {0}
-#PBS -l {1}
-#PBS -o {2}
-#PBS -e {3}
+#PBS -o {1}
+#PBS -e {2}
 
-python -m pypalmetto run '{4}'
-        """.format(j.getName(), qsubL, self.getJobOutFile(j),
-                self.getJobErrFile(j), j.getHash())
+python -m pypalmetto run '{3}'
+        """.format(j.name, self.getJobOutFile(j),
+                self.getJobErrFile(j), j.runHash)
         #print("About to run qsub with:")
         #print(jobStr)
-        pbsId = str(sh.qsub(_in=jobStr)).strip()
+        qsubParams = j.qsubParamsRaw.copy()
+        qsubParams.update({'_in': jobStr})
+        pbsId = str(sh.qsub(**qsubParams)).strip()
 
         dbJob = self.jobs.find_one(runHash=runHash)
         dbJob.update(

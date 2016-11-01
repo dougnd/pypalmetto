@@ -12,27 +12,29 @@ class JobStatus:
 
 
 class Job(object):
-    def __init__(self, fRun, palmetto, params, name):
-        self.runPickled = base64.b64encode(cloudpickle.dumps(fRun))
-        self.params = params
-        self.paramsPickled = base64.b64encode(pickle.dumps(params))
-        self.runHash = base64.b64encode(hashlib.md5(
-            self.runPickled + self.paramsPickled).digest())
-        self.palmetto = palmetto
-        self.name = name
-        if not isinstance(params, dict):
-            raise InputError("Job parameters are not a dict type!")
+    def __init__(self, jobDict, palmetto):
+        if 'runFuncRaw' in jobDict and 'paramsRaw' in jobDict:
+            self.runFunc = base64.b64encode(
+                    cloudpickle.dumps(jobDict['runFuncRaw']))
+            self.params = base64.b64encode(
+                    pickle.dumps(jobDict['paramsRaw']))
+            self.runHash = base64.b64encode(hashlib.md5(
+                    self.runFunc + self.params).digest())
+        if 'qsubParamsRaw' in jobDict:
+            self.qsubParams= base64.b64encode(
+                    pickle.dumps(jobDict['qsubParamsRaw']))
+        if 'qsubParams' in jobDict:
+            self.qsubParamsRaw = pickle.loads(
+                    base64.b64decode(jobDict['qsubParams']))
 
-    def getHash(self):
-        return self.runHash
-    def getName(self):
-        return self.name
-    def getRunPickled(self):
-        return self.runPickled
-    def getParamsPickled(self):
-        return self.paramsPickled
-    def getParams(self):
-        return self.params
+        self.__dict__.update(jobDict)
+        self.palmetto = palmetto
+
+    def __str__(self):
+        return '<Job: name={0}, hash={1}, status={2}>'.format(
+                self.name, self.runHash, 
+                JobStatus.toStr(self.getStatus()))
+
 
     def getStatus(self):
         prevJob = self.palmetto.jobs.find_one(runHash=self.runHash)
@@ -60,7 +62,7 @@ class Job(object):
         runPickled = base64.b64decode(self.runPickled)
         paramsPickled = base64.b64decode(self.paramsPickled)
         runFunc = cloudpickle.loads(runPickled)
-        params = pickle.loads(paramsPickled)
+        params = pickle.loads(self.params)
         return runFunc(**params)
 
         
