@@ -19,7 +19,7 @@ class Job(object):
             self.params = base64.b64encode(
                     pickle.dumps(jobDict['paramsRaw']))
             self.runHash = base64.b64encode(hashlib.md5(
-                    self.runFunc + self.params).digest())
+                    self.params).digest())
         if 'qsubParamsRaw' in jobDict:
             self.qsubParams= base64.b64encode(
                     pickle.dumps(jobDict['qsubParamsRaw']))
@@ -35,12 +35,19 @@ class Job(object):
                 self.name, self.runHash, 
                 JobStatus.toStr(self.getStatus()))
 
+    def decode(self, val):
+        return pickle.loads(base64.b64decode(val))
 
-    def getStatus(self):
+
+    def getStatus(self, fast=False):
         prevJob = self.palmetto.jobs.find_one(runHash=self.runHash)
         if prevJob == None:
             return JobStatus.NotSubmitted
         s = prevJob['status']
+
+        if fast:
+            return s
+
         if s != JobStatus.Running and s != JobStatus.Queued:
             return s
 

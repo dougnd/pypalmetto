@@ -1,3 +1,3 @@
 from palmetto import Palmetto
-from job import Job
+from job import Job, JobStatus
 

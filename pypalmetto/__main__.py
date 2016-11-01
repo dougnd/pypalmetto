@@ -1,4 +1,4 @@
-from palmetto import Palmetto, JobStatus
+from palmetto import Palmetto, JobStatus, Job
 import argparse
 
 
@@ -27,6 +27,11 @@ def status(args):
     eJobs = (p.jobs.count(status=JobStatus.Error))
     if eJobs > 0:
         print("There are {0} jobs with error".format(eJobs))
+        if args.verbose_errors:
+            for j in p.jobs.find(status=JobStatus.Error):
+                print(Job(j, p))
+
+
 
 def clear(args):
     p = Palmetto()
@@ -42,6 +47,8 @@ parser_run.set_defaults(func=run)
 
 parser_status = subparsers.add_parser('status', help='Print PyPalmetto DB status')
 parser_status.set_defaults(func=status)
+parser_status.add_argument('-e', '--verbose-errors', action='store_true')
+
 
 parser_clear = subparsers.add_parser('clear', help='Clear DB')
 parser_clear.set_defaults(func=clear)
