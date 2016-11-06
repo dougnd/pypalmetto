@@ -66,10 +66,10 @@ class Job(object):
         self.palmetto.submitJob(self)
 
     def executeLocal(self):
-        runPickled = base64.b64decode(self.runPickled)
-        paramsPickled = base64.b64decode(self.paramsPickled)
+        runPickled = base64.b64decode(self.runFunc)
+        paramsPickled = base64.b64decode(self.params)
         runFunc = cloudpickle.loads(runPickled)
-        params = pickle.loads(self.params)
+        params = pickle.loads(paramsPickled)
         return runFunc(**params)
 
         
