@@ -19,7 +19,7 @@ class Job(object):
             self.params = base64.b64encode(
                     pickle.dumps(jobDict['paramsRaw']))
             self.runHash = base64.b64encode(hashlib.md5(
-                    self.params).digest())
+                    self.params+jobDict['name']).digest())
         if 'qsubParamsRaw' in jobDict:
             self.qsubParams= base64.b64encode(
                     pickle.dumps(jobDict['qsubParamsRaw']))

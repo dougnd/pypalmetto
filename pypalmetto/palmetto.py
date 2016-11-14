@@ -8,6 +8,7 @@ from job import Job, JobStatus
 import base64
 import sh
 import re
+import inspect
 
 
 """
@@ -127,14 +128,14 @@ class Palmetto(object):
         dbJob = prevJob if prevJob != None else dict(
                 runHash=runHash,
                 name=j.name,
-                params=j.params,
-                runFunc=j.runFunc)
+                params=j.params)
         dbJob.update(
                 retVal='',
                 pbsId='',
                 time=time.time(),
                 qsubParams=j.qsubParams,
-                status=JobStatus.NotSubmitted)
+                status=JobStatus.NotSubmitted,
+                runFunc=j.runFunc)
 
         if prevJob == None:
             self.jobs.insert(dbJob)
@@ -161,7 +162,6 @@ python -m pypalmetto run '{3}'
                 pbsId=pbsId)
         self.jobs.update(dbJob, ['id'])
 
-            
     def runJob(self, runHash):
         status = JobStatus.Completed
         job = self.jobs.find_one(runHash=runHash)
@@ -174,6 +174,9 @@ python -m pypalmetto run '{3}'
             paramsPickled = base64.b64decode(job['params'])
             runFunc = cloudpickle.loads(runPickled)
             params = pickle.loads(paramsPickled)
+            argInfo = inspect.getargspec(runFunc)
+            if '_job' in argInfo[0]:
+                params['_job'] = job
             retPickled = pickle.dumps(runFunc(**params))
             job['retVal'] = base64.b64encode(retPickled)
         except:

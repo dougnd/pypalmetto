@@ -5,7 +5,7 @@ setup(
     packages=['pypalmetto'],
     version='0.1.0',
     install_requires=[
-                  'cloudpickle', 'dataset', 'sh'
+                  'cloudpickle', 'dataset', 'sh', 'tabulate'
                         ],
     description = 'Palmetto Python Module',
     author = 'Douglas Dawson',
