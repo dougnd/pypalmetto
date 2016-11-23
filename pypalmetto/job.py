@@ -2,6 +2,7 @@ import cloudpickle
 import pickle
 import hashlib
 import base64
+import inspect
 
 class JobStatus:
     Completed, Running, Queued, Error, NotSubmitted = range(5)
@@ -70,6 +71,9 @@ class Job(object):
         paramsPickled = base64.b64decode(self.params)
         runFunc = cloudpickle.loads(runPickled)
         params = pickle.loads(paramsPickled)
+        argInfo = inspect.getargspec(runFunc)
+        if '_job' in argInfo[0]:
+            params['_job'] = dict(runHash=self.runHash, pbsId=0, name=self.name)
         return runFunc(**params)
 
         
